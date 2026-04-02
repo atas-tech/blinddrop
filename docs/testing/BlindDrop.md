@@ -121,21 +121,21 @@ BlindDrop will live in its own repository, but the scenarios are defined here fi
 
 ## Milestone 6: Post-MVP Passphrase Mode
 
-- [ ] **Integration 401: Metadata fetch does not consume a passphrase-protected secret**
-  - [ ] Create a passphrase-protected secret in the future reservation-based mode
-  - [ ] Request metadata only
-  - [ ] Assert the secret remains retrievable
+- [x] **Integration 401: Metadata fetch does not consume a passphrase-protected secret**
+  - [x] Create a passphrase-protected secret in the future reservation-based mode
+  - [x] Request metadata only
+  - [x] Assert the secret remains retrievable
 
-- [ ] **Integration 402: Wrong passphrase does not permanently burn the secret**
-  - [ ] Acquire a reservation
-  - [ ] Attempt decrypt with the wrong passphrase
-  - [ ] Let the reservation expire
-  - [ ] Retry with the correct passphrase and assert success
+- [x] **Integration 402: Wrong passphrase does not permanently burn the secret**
+  - [x] Acquire a reservation
+  - [x] Attempt decrypt with the wrong passphrase
+  - [x] Let the reservation expire
+  - [x] Retry with the correct passphrase and assert success
 
-- [ ] **Integration 403: Reservation prevents concurrent reveals**
-  - [ ] Start two near-simultaneous access attempts
-  - [ ] Assert only one receives the reservation token
-  - [ ] Assert the other is denied or told to retry later
+- [x] **Integration 403: Reservation prevents concurrent reveals**
+  - [x] Start two near-simultaneous access attempts
+  - [x] Assert only one receives the reservation token
+  - [x] Assert the other is denied or told to retry later
 
 ## Exit Criteria
 

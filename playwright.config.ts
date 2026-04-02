@@ -11,7 +11,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3001',
+    baseURL: 'http://localhost:3002',
     trace: 'on-first-retry',
   },
   projects: [
@@ -21,9 +21,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run build && NODE_ENV=production npm start',
-    port: 3001,
-    reuseExistingServer: !process.env.CI,
+    command: 'npm run build && NODE_ENV=production RESERVATION_TTL_SECONDS=2 PORT=3002 npm start',
+    port: 3002,
+    reuseExistingServer: false,
     timeout: 60 * 1000,
   },
 });

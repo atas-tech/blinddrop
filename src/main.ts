@@ -68,6 +68,60 @@ async function decrypt(base64Ciphertext: string, base64Key: string): Promise<str
   }
 }
 
+async function deriveAesKeyFromPassphrase(passphrase: string, saltBa64: string): Promise<string> {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(passphrase),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits", "deriveKey"]
+  );
+
+  const saltBuf = Uint8Array.from(atob(saltBa64), c => c.charCodeAt(0));
+
+  const key = await crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: saltBuf,
+      iterations: 600000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
+  );
+  
+  const exportedKey = await crypto.subtle.exportKey("raw", key);
+  return btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
+}
+
+async function encryptWithKey(text: string, base64Key: string): Promise<string> {
+  const enc = new TextEncoder();
+  const keyBuf = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyBuf,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"]
+  );
+  
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertextBuf = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    enc.encode(text)
+  );
+
+  const packed = new Uint8Array(iv.length + ciphertextBuf.byteLength);
+  packed.set(iv, 0);
+  packed.set(new Uint8Array(ciphertextBuf), iv.length);
+  
+  return btoa(String.fromCharCode(...packed));
+}
+
 declare global {
   interface Window {
     turnstile: any;
@@ -149,7 +203,24 @@ function initCreateScreen() {
         actionBtn.classList.add('opacity-50', 'pointer-events-none');
 
         try {
-            const { ciphertext, key } = await encrypt(text);
+            const passphraseInput = document.getElementById('passphrase-input') as HTMLInputElement;
+            const passphrase = passphraseInput?.value || '';
+
+            let ciphertext = '';
+            let keyParams = '';
+            let passphrase_salt: string | undefined = undefined;
+
+            if (passphrase) {
+                const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+                passphrase_salt = btoa(String.fromCharCode(...saltBytes));
+                
+                const derivedKey = await deriveAesKeyFromPassphrase(passphrase, passphrase_salt);
+                ciphertext = await encryptWithKey(text, derivedKey);
+            } else {
+                const encResult = await encrypt(text);
+                ciphertext = encResult.ciphertext;
+                keyParams = encResult.key;
+            }
             
             const res = await fetch('/api/secrets', {
                 method: 'POST',
@@ -157,7 +228,8 @@ function initCreateScreen() {
                 body: JSON.stringify({
                     ciphertext,
                     ttl: selectedTtl,
-                    turnstileToken: currentTurnstileToken
+                    turnstileToken: currentTurnstileToken,
+                    passphrase_salt
                 })
             });
 
@@ -171,7 +243,9 @@ function initCreateScreen() {
             const url = new URL(window.location.href);
             const params = new URLSearchParams();
             params.set('id', data.id);
-            params.set('key', key);
+            if (keyParams) {
+                params.set('key', keyParams);
+            }
             url.hash = params.toString();
             
             // Display Result
@@ -243,6 +317,28 @@ async function initRevealScreen(hashParams: URLSearchParams) {
     const subP = document.querySelector('p');
     if (subP) subP.innerText = "This secret will be permanently destroyed once viewed.";
 
+    let meta: any = null;
+    try {
+        const metaRes = await fetch(`/api/secrets/${id}/meta`);
+        if (!metaRes.ok) {
+            const data = await metaRes.json().catch(()=>({}));
+            throw new Error(data.error || "Failed to fetch metadata");
+        }
+        meta = await metaRes.json();
+    } catch (err: any) {
+        if (inputContainer) {
+            inputContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-8 bg-error/10 rounded-lg border border-error/20 text-center">
+                    <span class="material-symbols-outlined text-5xl text-error mb-4" style="font-variation-settings: 'FILL' 1;">error</span>
+                    <h3 class="text-error font-bold text-xl mb-2">Notice</h3>
+                    <p class="text-error-dim font-medium max-w-sm">${err.message}</p>
+                </div>
+            `;
+        }
+        if (actionBtn) actionBtn.style.display = 'none';
+        return;
+    }
+
     if (inputContainer) {
         inputContainer.innerHTML = `
             <div class="flex flex-col items-center justify-center p-8 bg-surface-container-lowest rounded-lg border border-primary/10 shadow-sm text-center">
@@ -250,6 +346,14 @@ async function initRevealScreen(hashParams: URLSearchParams) {
                 <p class="text-on-surface font-semibold text-lg max-w-sm">You have received an encrypted secret. Ready to unlock?</p>
             </div>
         `;
+        if (meta.requires_passphrase) {
+            inputContainer.innerHTML += `
+                <div class="mt-8 w-full">
+                    <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1 text-left">Passphrase Required</label>
+                    <input type="password" id="reveal-passphrase" class="w-full bg-surface-container-lowest border-none rounded-sm px-6 py-4 text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all shadow-inner font-medium" placeholder="Enter passphrase to unlock" />
+                </div>
+            `;
+        }
     }
 
     if (actionText) actionText.innerText = "Reveal & Destroy Secret";
@@ -262,20 +366,47 @@ async function initRevealScreen(hashParams: URLSearchParams) {
             actionBtn.classList.add('opacity-50', 'pointer-events-none');
             
             try {
-                const res = await fetch(`/api/secrets/${id}`);
-                
-                if (!res.ok) {
-                    const errorData = await res.json().catch(() => ({}));
-                    throw new Error(errorData.error || `HTTP ${res.status}`);
+                let ciphertext = '';
+                let decryptionKey = key as string;
+                let accessToken = '';
+
+                if (meta.requires_passphrase) {
+                    const passInput = document.getElementById('reveal-passphrase') as HTMLInputElement;
+                    const pass = passInput?.value || '';
+                    if (!pass) throw new Error("Passphrase is required.");
+                    
+                    const accessRes = await fetch(`/api/secrets/${id}/access`, { method: 'POST' });
+                    if (!accessRes.ok) {
+                        const err = await accessRes.json().catch(()=>({}));
+                        throw new Error(err.error || "Failed to access secret");
+                    }
+                    const accessData = await accessRes.json();
+                    ciphertext = accessData.ciphertext;
+                    accessToken = accessData.access_token;
+                    
+                    decryptionKey = await deriveAesKeyFromPassphrase(pass, meta.salt);
+                } else {
+                    const res = await fetch(`/api/secrets/${id}`);
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({}));
+                        throw new Error(errorData.error || `HTTP ${res.status}`);
+                    }
+                    const data = await res.json();
+                    ciphertext = data.ciphertext;
                 }
                 
-                const data = await res.json();
-                const ciphertext = data.ciphertext;
-                
-                const plaintext = await decrypt(ciphertext, key as string);
+                const plaintext = await decrypt(ciphertext, decryptionKey);
                 
                 if (!plaintext) {
-                    throw new Error("Invalid decryption key or corrupt payload.");
+                    throw new Error("Incorrect passphrase or corrupt payload.");
+                }
+
+                if (meta.requires_passphrase && accessToken) {
+                    await fetch(`/api/secrets/${id}/consume`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ access_token: accessToken })
+                    });
                 }
 
                 if (inputContainer) {
@@ -323,7 +454,7 @@ async function initRevealScreen(hashParams: URLSearchParams) {
 
 // Bootstrapping
 const hashParams = new URLSearchParams(window.location.hash.slice(1));
-if (hashParams.has('id') && hashParams.has('key')) {
+if (hashParams.has('id')) {
     initRevealScreen(hashParams);
 } else {
     initCreateScreen();

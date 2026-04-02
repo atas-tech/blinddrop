@@ -53,7 +53,9 @@ test.describe('BlindDrop Core Flow', () => {
     // We will monitor network requests    // --- E2E 302 ---
     let retrievedApis = 0;
     page.on('request', request => {
-      if (request.url().includes('/api/secrets') && request.method() === 'GET') {
+      if (request.url().includes('/api/secrets') && 
+          request.method() === 'GET' && 
+          !request.url().includes('/meta')) {
         retrievedApis++;
       }
     });
@@ -83,12 +85,11 @@ test.describe('BlindDrop Core Flow', () => {
     // Refresh or revisit the same URL
     await page.goto('about:blank');
     await page.goto(shareUrl);
-    await expect(page.locator('#action-text')).toHaveText('Reveal & Destroy Secret');
-    await page.locator('#action-btn').click();
-
-    // Should see an error UI because it's deleted
+    
+    // Should see an error UI because it's deleted, and the action button should be hidden
     const errorNotice = page.locator('text=Notice');
     await expect(errorNotice).toBeVisible();
+    await expect(page.locator('#action-btn')).toBeHidden();
     
     // The exact error message depends on the backend implementation, likely JSON tombstone message.
     // E.g., 'This secret has already been viewed.' 
