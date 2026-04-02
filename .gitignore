@@ -5,7 +5,13 @@ node_modules/
 # Build outputs
 dist/
 dist-ssr/
+dist-server/
 *.local
+
+# Tests
+playwright-report/
+test-results/
+
 
 # IDEs and Editors
 .vscode/
