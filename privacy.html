@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Privacy Policy — BlindDrop</title>
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <!-- Google Fonts: Manrope & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@700;800&amp;display=swap" rel="stylesheet"/>
+
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body class="font-body text-on-surface antialiased bg-slate-50 dark:bg-slate-950">
+    <header class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl rounded-full mt-6 mx-auto w-[90%] max-w-5xl border border-white/60 dark:border-slate-700/30 shadow-[0_20px_40px_rgba(30,41,59,0.06)] font-['Manrope'] tracking-tight">
+        <div class="flex items-center gap-2">
+            <a href="/" class="text-2xl font-black text-slate-900 dark:text-slate-50 hover:opacity-80 transition-opacity">BlindDrop</a>
+        </div>
+        <nav class="hidden md:flex items-center gap-8">
+            <a class="text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800/60 transition-all px-3 py-1 rounded-full" href="/">Home</a>
+            <a class="text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800/60 transition-all px-3 py-1 rounded-full" href="https://blindpass.atas.tech/">BlindPass</a>
+            <a class="text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800/60 transition-all px-3 py-1 rounded-full" href="https://atas.tech">ATAS Tech</a>
+        </nav>
+    </header>
+
+    <main class="relative min-h-screen pt-32 pb-20 px-6 flex flex-col items-center">
+        <!-- Background Decorative Element -->
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 blur-[120px] rounded-full -z-10"></div>
+        
+        <div class="glass-panel w-full max-w-3xl p-8 md:p-12 rounded-xl shadow-[0_20px_60px_rgba(30,41,59,0.08)] bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl">
+            <h1 class="font-headline text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface mb-8">Privacy Policy</h1>
+            
+            <div class="space-y-8 text-on-surface-variant leading-relaxed text-lg font-medium">
+                <section>
+                    <h2 class="text-on-surface text-xl font-bold mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">security</span>
+                        Zero-Knowledge Architecture
+                    </h2>
+                    <p>
+                        BlindDrop is designed with your privacy as the absolute priority. All encryption and decryption of secrets happen directly in your browser. We never receive, store, or have access to your plaintext information or your passphrases.
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-on-surface text-xl font-bold mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">delete_sweep</span>
+                        Ephemeral Storage
+                    </h2>
+                    <p>
+                        Secrets are stored in an encrypted format in our ephemeral storage (Redis). They are automatically and permanently deleted under two conditions:
+                        <ul class="list-disc ml-6 mt-2 space-y-1">
+                            <li>Immediately after the secret is successfully viewed by the recipient.</li>
+                            <li>Automatically when the selected Time-To-Live (TTL) expires.</li>
+                        </ul>
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-on-surface text-xl font-bold mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">person_off</span>
+                        No Personal Data Collection
+                    </h2>
+                    <p>
+                        We do not collect any personal information such as your name, email address, or IP address for tracking. We do not use third-party tracking cookies or sell your data. We use Cloudflare Turnstile to prevent automated abuse, which may collect minimal telemetry to ensure you are human.
+                    </p>
+                </section>
+
+                <section>
+                    <h2 class="text-on-surface text-xl font-bold mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">code</span>
+                        Open & Transparent
+                    </h2>
+                    <p>
+                        Our goal is to build trust through technology. BlindDrop is a utility provided by <a href="https://atas.tech" class="text-primary hover:underline">ATAS Tech</a> to help the community share sensitive data securely and privately.
+                    </p>
+                </section>
+            </div>
+
+            <div class="mt-12 pt-8 border-t border-outline-variant/20">
+                <a href="/" class="inline-flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                    Back to BlindDrop
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="w-full py-12 flex flex-col md:flex-row justify-center items-center gap-8 bg-transparent text-xs font-medium font-['Inter'] uppercase tracking-widest text-slate-400 dark:text-slate-600">
+        <div class="text-slate-900 dark:text-slate-50 font-bold opacity-80">BlindDrop: End-to-End Encrypted Secrets</div>
+        <div class="flex items-center gap-8">
+            <a class="hover:text-blue-600 dark:hover:text-blue-400 transition-opacity opacity-80 hover:opacity-100" href="/">Home</a>
+            <a class="hover:text-blue-600 dark:hover:text-blue-400 transition-opacity opacity-80 hover:opacity-100" href="https://blindpass.atas.tech/">BlindPass</a>
+            <a class="hover:text-blue-600 dark:hover:text-blue-400 transition-opacity opacity-80 hover:opacity-100" href="https://atas.tech">ATAS Tech</a>
+        </div>
+    </footer>
+</body>
+</html>

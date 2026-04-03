@@ -1,5 +1,6 @@
 // src/main.ts
 export {};
+import { API_BASE_URL } from './config.js';
 
 declare global {
   interface Window {
@@ -222,7 +223,7 @@ function initCreateScreen() {
                 keyParams = encResult.key;
             }
             
-            const res = await fetch('/api/secrets', {
+            const res = await fetch(`${API_BASE_URL}/api/secrets`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -319,7 +320,7 @@ async function initRevealScreen(hashParams: URLSearchParams) {
 
     let meta: any = null;
     try {
-        const metaRes = await fetch(`/api/secrets/${id}/meta`);
+        const metaRes = await fetch(`${API_BASE_URL}/api/secrets/${id}/meta`);
         if (!metaRes.ok) {
             const data = await metaRes.json().catch(()=>({}));
             throw new Error(data.error || "Failed to fetch metadata");
@@ -375,7 +376,7 @@ async function initRevealScreen(hashParams: URLSearchParams) {
                     const pass = passInput?.value || '';
                     if (!pass) throw new Error("Passphrase is required.");
                     
-                    const accessRes = await fetch(`/api/secrets/${id}/access`, { method: 'POST' });
+                    const accessRes = await fetch(`${API_BASE_URL}/api/secrets/${id}/access`, { method: 'POST' });
                     if (!accessRes.ok) {
                         const err = await accessRes.json().catch(()=>({}));
                         throw new Error(err.error || "Failed to access secret");
@@ -386,7 +387,7 @@ async function initRevealScreen(hashParams: URLSearchParams) {
                     
                     decryptionKey = await deriveAesKeyFromPassphrase(pass, meta.salt);
                 } else {
-                    const res = await fetch(`/api/secrets/${id}`);
+                    const res = await fetch(`${API_BASE_URL}/api/secrets/${id}`);
                     if (!res.ok) {
                         const errorData = await res.json().catch(() => ({}));
                         throw new Error(errorData.error || `HTTP ${res.status}`);
@@ -402,7 +403,7 @@ async function initRevealScreen(hashParams: URLSearchParams) {
                 }
 
                 if (meta.requires_passphrase && accessToken) {
-                    await fetch(`/api/secrets/${id}/consume`, {
+                    await fetch(`${API_BASE_URL}/api/secrets/${id}/consume`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ access_token: accessToken })
