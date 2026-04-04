@@ -39,12 +39,14 @@ export function buildApp() {
     origin: config.corsOrigin
   });
 
-  if (config.isProduction) {
-    app.register(staticPlugin, {
-      root: path.join(__dirname, '../dist'),
-      prefix: '/',
-    });
-  }
+  app.get('/', async () => {
+    return { 
+      status: 'active', 
+      app: 'BlindDrop API', 
+      version: '1.0.0',
+      docs: 'https://github.com/atas-tech/blinddrop'
+    };
+  });
 
   // Turnstile validation helper
   async function validateTurnstile(token: string, ip: string): Promise<boolean> {
