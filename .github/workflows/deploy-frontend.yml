@@ -2,11 +2,19 @@ name: Deploy Frontend
 on:
   push:
     branches: [ master ]
+  workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 jobs:
-  build-and-deploy:
-    concurrency: ci-${{ github.ref }}
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
@@ -19,8 +27,11 @@ jobs:
         env:
           VITE_API_URL: https://pw-api.atas.tech
 
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          folder: dist
-          branch: gh-pages
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
