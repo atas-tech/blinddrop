@@ -154,7 +154,7 @@ function initCreateScreen() {
         (window as any).onloadTurnstileCallback = function() {
             if (!document.getElementById('turnstile-container')) return;
             turnstileWidgetId = window.turnstile.render('#turnstile-container', {
-                sitekey: '1x00000000000000000000AA', // Dummy test key
+                sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA',
                 callback: function(token: string) {
                     currentTurnstileToken = token;
                 },

@@ -36,7 +36,7 @@ export function buildApp() {
   });
 
   app.register(cors, {
-    origin: '*' // Simplify for MVP, configure appropriately for prod
+    origin: config.corsOrigin
   });
 
   if (config.isProduction) {

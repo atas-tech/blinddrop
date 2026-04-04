@@ -13,6 +13,7 @@
   <Config Name="Port" Target="3001" Default="3001" Mode="tcp" Description="Internal API Port" Type="Port" Display="always" Required="true" Mask="false">3001</Config>
   <Config Name="Redis URL" Target="REDIS_URL" Default="redis://redis:6379" Description="Redis connection string (e.g. redis://host:port)" Type="Variable" Display="always" Required="true" Mask="false">redis://localhost:6379</Config>
   <Config Name="Turnstile Secret Key" Target="TURNSTILE_SECRET_KEY" Default="" Description="Cloudflare Turnstile secret key for captcha verification." Type="Variable" Display="always" Required="true" Mask="true"></Config>
+  <Config Name="CORS Origin" Target="CORS_ORIGIN" Default="*" Description="Configurable CORS origin (e.g., https://blinddrop.atas.tech)" Type="Variable" Display="always" Required="true" Mask="false">*</Config>
   <Config Name="Node ENV" Target="NODE_ENV" Default="production" Description="Set to 'production' for performance and static serving." Type="Variable" Display="always" Required="true" Mask="false">production</Config>
   <Icon>https://blinddrop.atas.tech/favicon-32x32.png</Icon>
 </Container>
