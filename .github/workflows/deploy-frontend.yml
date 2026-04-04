@@ -25,7 +25,7 @@ jobs:
           npm install
           npm run build
         env:
-          VITE_API_URL: https://pw-api.atas.tech
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
 
       - name: Upload artifact

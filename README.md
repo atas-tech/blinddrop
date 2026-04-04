@@ -62,6 +62,7 @@ Create a `.env` file in the root (see `.env.example`):
 
 ### Frontend (GitHub Pages)
 The frontend is configured to deploy automatically to `blinddrop.atas.tech` via GitHub Actions on every push to the `master` branch.
+- **Service Configuration**: Requires GitHub Secrets `VITE_API_URL` (e.g., `https://pw-api.atas.tech`) and `VITE_TURNSTILE_SITE_KEY`.
 
 ### Backend (Docker/Unraid)
 The backend is dockerized and can be built via the manual `Build and Push API Image` GitHub Action.
