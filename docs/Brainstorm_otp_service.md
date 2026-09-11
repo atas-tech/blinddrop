@@ -3,6 +3,8 @@
 > Brainstorm for a standalone side project inspired by `@blindpass/browser-ui`  
 > **Status:** MVP decisions finalized — ready for implementation, with sender-side status tracking intentionally deferred
 
+> **Historical design note:** This brainstorm contains superseded v1 and v1.1 examples, including the former reservation-based `access`/`consume` flow. The current product is v2-only: use the contract and protocol in [the security review](security-review-2026-09-11.md). Do not implement or support the old routes, clients, or record formats.
+
 ---
 
 ## Decisions Log

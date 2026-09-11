@@ -22,11 +22,12 @@ jobs:
 
       - name: Install and Build 🔧
         run: |
-          npm install
+          npm ci --ignore-scripts
           npm run build
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_TURNSTILE_ACTION: create-secret
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

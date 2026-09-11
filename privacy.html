@@ -38,7 +38,7 @@
                         Zero-Knowledge Architecture
                     </h2>
                     <p>
-                        BlindDrop is designed with your privacy as the absolute priority. All encryption and decryption of secrets happen directly in your browser. We never receive, store, or have access to your plaintext information or your passphrases.
+                        BlindDrop is designed with your privacy as the absolute priority. All encryption and decryption of secrets happen directly in your browser. We never receive, store, or have access to your plaintext information, fragment keys, or passphrases. The v2 API stores only the versioned encrypted envelope, its non-secret passphrase salt when present, and a one-way burn-token hash until reveal or expiry.
                     </p>
                 </section>
 
@@ -48,9 +48,9 @@
                         Ephemeral Storage
                     </h2>
                     <p>
-                        Secrets are stored in an encrypted format in our ephemeral storage (Redis). They are automatically and permanently deleted under two conditions:
+                        Secrets are stored in an encrypted format in our ephemeral storage (Redis). The encrypted envelope is deleted when it is delivered once or when its selected time-to-live expires. Browser copies, screenshots, backups, and infrastructure snapshots are outside the service's control.
                         <ul class="list-disc ml-6 mt-2 space-y-1">
-                            <li>Immediately after the secret is successfully viewed by the recipient.</li>
+                            <li>Immediately after the envelope is delivered to the recipient's browser.</li>
                             <li>Automatically when the selected Time-To-Live (TTL) expires.</li>
                         </ul>
                     </p>

@@ -1,21 +1,40 @@
-version: '3.8'
-
 services:
   api:
     build: .
     container_name: blinddrop_api
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
     environment:
-      - REDIS_URL=redis://redis:6379
-      - NODE_ENV=production
+      REDIS_URL: redis://blinddrop:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379
+      NODE_ENV: production
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?TURNSTILE_SECRET_KEY must be set}
+      TURNSTILE_ALLOWED_HOSTNAMES: ${TURNSTILE_ALLOWED_HOSTNAMES:?TURNSTILE_ALLOWED_HOSTNAMES must be set}
+      TURNSTILE_ACTION: ${TURNSTILE_ACTION:-create-secret}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN must be set}
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+      CREATE_RATE_LIMIT_MAX: ${CREATE_RATE_LIMIT_MAX:-100}
+      META_RATE_LIMIT_MAX: ${META_RATE_LIMIT_MAX:-300}
+      REVEAL_RATE_LIMIT_MAX: ${REVEAL_RATE_LIMIT_MAX:-100}
+      BURN_RATE_LIMIT_MAX: ${BURN_RATE_LIMIT_MAX:-100}
     depends_on:
       - redis
     restart: unless-stopped
+    networks:
+      - blinddrop-internal
 
   redis:
     image: redis:7-alpine
     container_name: blinddrop_redis
-    ports:
-      - "6379:6379"
+    entrypoint: ["/bin/sh", "/usr/local/bin/redis-entrypoint.sh"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+    volumes:
+      - ./deploy/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./deploy/redis/redis-entrypoint.sh:/usr/local/bin/redis-entrypoint.sh:ro
     restart: unless-stopped
+    networks:
+      - blinddrop-internal
+
+networks:
+  blinddrop-internal:
+    driver: bridge

@@ -12,8 +12,9 @@
     "build": "vite build && tsc -p tsconfig.server.json",
     "build:server": "tsc -p tsconfig.server.json",
     "start": "tsx server/index.ts",
-    "test:e2e": "playwright test",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test:e2e": "npm run build:server && playwright test",
+    "test:integration": "node --import tsx --test --test-concurrency=1 tests/integration/*.test.ts",
+    "test": "npm run test:integration && npm run test:e2e"
   },
   "bugs": {
     "url": "https://github.com/atas-tech/blinddrop/issues"
@@ -21,7 +22,6 @@
   "homepage": "https://github.com/atas-tech/blinddrop#readme",
   "dependencies": {
     "@fastify/cors": "^11.2.0",
-    "@fastify/static": "^9.0.0",
     "fastify": "^5.8.4",
     "ioredis": "^5.10.1"
   },

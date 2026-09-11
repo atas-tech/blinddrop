@@ -7,13 +7,16 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/atas-tech/blinddrop/issues</Support>
   <Project>https://blinddrop.atas.tech</Project>
-  <Overview>Backend for BlindDrop, a zero-knowledge one-time secret sharing service. Designed for use with a separate Redis instance.</Overview>
+  <Overview>Backend for BlindDrop, a zero-knowledge one-time secret sharing service. Keep the API behind a TLS reverse proxy and use a private authenticated Redis instance.</Overview>
   <Category>Security:Privacy</Category>
   <WebUI>http://[IP]:[PORT:3001]</WebUI>
-  <Config Name="Port" Target="3001" Default="3001" Mode="tcp" Description="Internal API Port" Type="Port" Display="always" Required="true" Mask="false">3001</Config>
-  <Config Name="Redis URL" Target="REDIS_URL" Default="redis://redis:6379" Description="Redis connection string (e.g. redis://host:port)" Type="Variable" Display="always" Required="true" Mask="false">redis://localhost:6379</Config>
+  <Config Name="Port" Target="3001" Default="3001" Mode="tcp" Description="API port; restrict host access to the TLS reverse proxy." Type="Port" Display="always" Required="true" Mask="false">3001</Config>
+  <Config Name="Redis URL" Target="REDIS_URL" Default="redis://blinddrop:REPLACE_WITH_PASSWORD@redis:6379" Description="Authenticated Redis connection string. Use a URL-safe password and keep Redis off the public network." Type="Variable" Display="always" Required="true" Mask="true">redis://blinddrop:REPLACE_WITH_PASSWORD@redis:6379</Config>
   <Config Name="Turnstile Secret Key" Target="TURNSTILE_SECRET_KEY" Default="" Description="Cloudflare Turnstile secret key for captcha verification." Type="Variable" Display="always" Required="true" Mask="true"></Config>
-  <Config Name="CORS Origin" Target="CORS_ORIGIN" Default="*" Description="Configurable CORS origin (e.g., https://blinddrop.atas.tech)" Type="Variable" Display="always" Required="true" Mask="false">*</Config>
-  <Config Name="Node ENV" Target="NODE_ENV" Default="production" Description="Set to 'production' for performance and static serving." Type="Variable" Display="always" Required="true" Mask="false">production</Config>
+  <Config Name="Turnstile Allowed Hostnames" Target="TURNSTILE_ALLOWED_HOSTNAMES" Default="blinddrop.atas.tech" Description="Comma-separated hostnames accepted in Turnstile verification responses." Type="Variable" Display="always" Required="true" Mask="false">blinddrop.atas.tech</Config>
+  <Config Name="Turnstile Action" Target="TURNSTILE_ACTION" Default="create-secret" Description="Expected Cloudflare Turnstile action returned by the creation widget." Type="Variable" Display="always" Required="true" Mask="false">create-secret</Config>
+  <Config Name="CORS Origin" Target="CORS_ORIGIN" Default="https://blinddrop.atas.tech" Description="Explicit frontend origin allowlist; comma-separated for multiple origins. Wildcard is not permitted in production." Type="Variable" Display="always" Required="true" Mask="false">https://blinddrop.atas.tech</Config>
+  <Config Name="Trusted Proxy IPs" Target="TRUSTED_PROXY_IPS" Default="" Description="Comma-separated reverse-proxy addresses allowed to supply the client IP for rate limiting." Type="Variable" Display="always" Required="false" Mask="false"></Config>
+  <Config Name="Node ENV" Target="NODE_ENV" Default="production" Description="Set to 'production' for fail-closed security configuration." Type="Variable" Display="always" Required="true" Mask="false">production</Config>
   <Icon>https://blinddrop.atas.tech/favicon-32x32.png</Icon>
 </Container>

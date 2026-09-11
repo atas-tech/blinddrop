@@ -66,10 +66,11 @@
             <!-- Secret Input -->
             <div class="group" id="input-container">
                 <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 ml-1">The Secret</label>
-                <textarea id="secret-input" class="w-full min-h-[160px] bg-surface-container-lowest border-none rounded-sm p-6 text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all shadow-inner text-lg leading-relaxed" placeholder="Enter your secret... (password / API key)"></textarea>
+                <textarea id="secret-input" spellcheck="false" autocomplete="off" class="w-full min-h-[160px] bg-surface-container-lowest border-none rounded-sm p-6 text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all shadow-inner text-lg leading-relaxed" placeholder="Enter your secret... (password / API key)"></textarea>
                 
-                <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-6 mb-3 ml-1">Optional Passphrase</label>
-                <input type="password" id="passphrase-input" class="w-full bg-surface-container-lowest border-none rounded-sm px-6 py-4 text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all shadow-inner text-lg" placeholder="Protect with an extra password..." />
+                <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-6 mb-3 ml-1">Optional Passphrase (Second Factor)</label>
+                <input type="password" id="passphrase-input" spellcheck="false" autocomplete="off" class="w-full bg-surface-container-lowest border-none rounded-sm px-6 py-4 text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all shadow-inner text-lg" placeholder="Use a long, unique passphrase..." />
+                <p class="mt-2 ml-1 text-sm text-on-surface-variant">The recipient needs both the link and this passphrase. Use a long, unique passphrase and share it separately.</p>
             </div>
 
             <!-- TTL Selection -->
