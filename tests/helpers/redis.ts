@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import net from 'node:net';
 
 export interface RedisHandle {
@@ -66,15 +66,20 @@ export async function startRedis(): Promise<RedisHandle> {
   }
 
   const port = await freePort();
+  const useRedisBinary = await commandExists('redis-server', ['--version']);
+  const useDocker = !useRedisBinary && await commandExists('docker', ['info']);
   const redisArgs = [
-    '--bind', '127.0.0.1',
-    '--port', String(port),
+    // A bridged Docker container must listen on its container interface;
+    // native Redis can stay bound to loopback on the host.
+    '--bind', useRedisBinary ? '127.0.0.1' : '0.0.0.0',
+    // Docker maps host port N to Redis' container port 6379. A native
+    // redis-server uses the allocated host port directly.
+    '--port', useRedisBinary ? String(port) : '6379',
     '--save', '',
     '--appendonly', 'no',
     '--maxmemory-policy', 'noeviction'
   ];
-  const useRedisBinary = await commandExists('redis-server', ['--version']);
-  if (!useRedisBinary && !(await commandExists('docker', ['--version']))) {
+  if (!useRedisBinary && !useDocker) {
     throw new Error('Neither redis-server nor Docker is available. Set TEST_REDIS_URL to an isolated Redis instance.');
   }
   const dockerName = `blinddrop-test-redis-${process.pid}-${port}`;
@@ -100,19 +105,27 @@ export async function startRedis(): Promise<RedisHandle> {
   return {
     url: `redis://127.0.0.1:${port}`,
     stop: async () => {
-      if (child.exitCode === null) child.kill('SIGTERM');
-      await new Promise<void>(resolve => {
-        const timer = setTimeout(resolve, 2000);
-        child.once('exit', () => {
-          clearTimeout(timer);
-          resolve();
-        });
-      });
       if (!useRedisBinary) {
+        // Removing the container first also handles runners that terminate
+        // this docker CLI process without propagating the signal to Redis.
+        try {
+          spawnSync('docker', ['rm', '-f', dockerName], {
+            stdio: 'ignore',
+            timeout: 5000
+          });
+        } catch {
+          // Cleanup is best effort when Docker itself is unavailable.
+        }
+      }
+
+      if (child.exitCode === null) child.kill('SIGTERM');
+      if (child.exitCode === null) {
         await new Promise<void>(resolve => {
-          const remover = spawn('docker', ['rm', '-f', dockerName], { stdio: 'ignore' });
-          remover.once('error', () => resolve());
-          remover.once('exit', () => resolve());
+          const timer = setTimeout(resolve, 2000);
+          child.once('exit', () => {
+            clearTimeout(timer);
+            resolve();
+          });
         });
       }
     }

@@ -1,4 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
+import { existsSync } from 'node:fs';
+
+const chromiumExecutable = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || [
+  '/usr/bin/chromium',
+  '/usr/bin/google-chrome',
+  '/usr/bin/chromium-browser'
+].find(existsSync);
 
 export default defineConfig({
   testDir: './e2e',
@@ -17,7 +24,12 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(chromiumExecutable ? {
+          launchOptions: { executablePath: chromiumExecutable }
+        } : {})
+      },
     },
   ],
   webServer: {
@@ -25,5 +37,6 @@ export default defineConfig({
     port: 3000,
     reuseExistingServer: false,
     timeout: 60 * 1000,
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 5000 },
   },
 });

@@ -329,6 +329,14 @@ export function buildApp(options: BuildAppOptions = {}) {
   assertProductionConfig(appConfig);
 
   const app = fastify({
+    // Unknown request fields must be rejected by the route schemas. Fastify's
+    // default AJV configuration removes additional properties before
+    // validation, which would silently accept malformed secret payloads.
+    ajv: {
+      customOptions: {
+        removeAdditional: false
+      }
+    },
     logger: {
       level: process.env.LOG_LEVEL || 'info',
       // Do not let Fastify's request/error serializers retain URL params or
@@ -367,6 +375,27 @@ export function buildApp(options: BuildAppOptions = {}) {
   redis.defineCommand('burnSecret', {
     numberOfKeys: 1,
     lua: BURN_SECRET_SCRIPT
+  });
+
+  // Fastify's ready lifecycle does not wait for clients created inside the
+  // app. Wait briefly for Redis to complete its ready check so the first
+  // request cannot fail merely because the connection handshake is still in
+  // flight. If Redis remains unavailable, startup continues and the request
+  // boundary below still fails closed with a controlled 503.
+  app.addHook('onReady', async () => {
+    if (redis.status === 'ready') return;
+
+    await new Promise<void>(resolve => {
+      const timer = setTimeout(() => {
+        redis.off('ready', onReady);
+        resolve();
+      }, 1000);
+      const onReady = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      redis.once('ready', onReady);
+    });
   });
 
   app.addHook('onRequest', async (request, reply) => {
@@ -640,7 +669,9 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
 
   app.post('/api/secrets/:id/reveal', {
-    schema: { params: UUID_PARAMS_SCHEMA, body: EMPTY_BODY_SCHEMA },
+    // Reveal has no request payload. Omitting a body schema allows the normal
+    // empty POST used by clients while the route still validates its UUID.
+    schema: { params: UUID_PARAMS_SCHEMA },
     preHandler: [validateSecretIdPreHandler, rateLimitPreHandler('reveal')]
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
