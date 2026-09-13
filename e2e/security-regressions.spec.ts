@@ -57,11 +57,10 @@ test.describe('BlindDrop security regressions', () => {
 
     await page.goto('/');
     await page.locator('#secret-input').fill(`${'é'.repeat(51200)}a`);
-    const dialog = page.waitForEvent('dialog');
     await page.locator('#action-btn').click();
-    const rejected = await dialog;
-    expect(rejected.message()).toContain('100 KiB');
-    await rejected.dismiss();
+    const rejected = page.locator('#create-error');
+    await expect(rejected).toBeVisible();
+    await expect(rejected).toContainText('100 KiB');
     await expect(page.locator('#share-link')).toHaveCount(0);
   });
 });

@@ -17,7 +17,7 @@ BlindDrop uses the **WebCrypto API** for client-side encryption:
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: Vanilla TypeScript + Vite + Tailwind CSS.
+- **Frontend**: Vanilla TypeScript + Vite + Tailwind CSS v4 (CSS-first tokens in `src/style.css`; three themes: light, dark, and a green-on-black "hacker" theme, selectable from the header and persisted in `localStorage`).
 - **Backend**: Fastify (TypeScript).
 - **Storage**: Redis (Ephemeral data).
 - **Infrastructure**: Dockerized for easy deployment.

@@ -1,124 +1,179 @@
 <!DOCTYPE html>
-
-<html class="light" lang="en"><head>
+<html lang="en">
+<head>
     <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>BlindDrop</title>
-    <!-- Material Symbols -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-    <!-- Google Fonts: Manrope & Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@700;800&amp;display=swap" rel="stylesheet"/>
+    <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+    <title>BlindDrop — Share secrets that self-destruct</title>
+    <meta name="description" content="Zero-knowledge, one-time secret sharing. AES-256-GCM encrypted in your browser; the link works exactly once."/>
+    <meta name="theme-color" content="#f4f6fb"/>
+
+    <!-- Apply the persisted theme before first paint to avoid a flash. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('blinddrop.theme');
+          if (t !== 'light' && t !== 'dark' && t !== 'hacker') {
+            t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          document.documentElement.setAttribute('data-theme', t);
+          document.documentElement.style.colorScheme = t === 'light' ? 'light' : 'dark';
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Material Symbols, subset to the glyphs this app uses (keep the list alphabetical) -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;icon_names=add,add_circle,arrow_back,bolt,check,close,code,content_copy,dark_mode,database,delete_sweep,encrypted,error,key,language,light_mode,link_off,local_fire_department,lock,lock_open,menu,password,person_off,progress_activity,security,shield_lock,terminal,timer_off,visibility,visibility_off,warning&amp;display=block" rel="stylesheet"/>
+    <!-- Inter (body), Manrope (display), JetBrains Mono (secrets, hacker theme) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Manrope:wght@700;800&amp;display=swap" rel="stylesheet"/>
 
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="stylesheet" href="/src/style.css" />
     <script type="module" src="/src/main.ts"></script>
 </head>
-<body class="font-body text-on-surface antialiased">
-<!-- TopNavBar Shell -->
-<header class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 md:px-8 py-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl rounded-full mt-6 mx-auto w-[92%] md:w-[90%] max-w-5xl border border-white/60 dark:border-slate-700/30 shadow-[0_20px_40px_rgba(30,41,59,0.06)] font-['Manrope'] tracking-tight transition-all duration-300">
-    <div class="flex items-center gap-2">
-        <a href="/" class="text-2xl font-black text-slate-900 dark:text-slate-50 hover:opacity-80 transition-opacity">BlindDrop</a>
-    </div>
-    <nav class="hidden md:flex items-center gap-8">
-        <a class="text-blue-700 dark:text-blue-300 font-bold hover:bg-white/60 dark:hover:bg-slate-800/60 transition-all px-3 py-1 rounded-full text-sm" href="#">Create</a>
-        <a class="text-slate-500 dark:text-slate-400 font-semibold hover:bg-white/60 dark:hover:bg-slate-800/60 transition-all px-3 py-1 rounded-full text-sm" href="https://blindpass.atas.tech/">BlindPass</a>
-        <a class="text-slate-500 dark:text-slate-400 font-semibold hover:bg-white/60 dark:hover:bg-slate-800/60 transition-all px-3 py-1 rounded-full text-sm" href="https://atas.tech">ATAS Tech</a>
+<body class="font-sans text-fg antialiased">
+
+<!-- Top navigation -->
+<header class="nav fixed top-0 left-0 right-0 z-50 mx-auto mt-4 md:mt-6 w-[calc(100%-2rem)] max-w-5xl flex items-center justify-between gap-3 px-4 md:px-6 py-2.5">
+    <a href="/" class="brand text-xl md:text-2xl flex items-center gap-2 hover:opacity-80 transition-opacity" aria-label="BlindDrop home">
+        <span class="material-symbols-outlined is-filled text-primary-text text-[22px]" aria-hidden="true">shield_lock</span>
+        <span>BlindDrop</span>
+    </a>
+
+    <nav class="hidden md:flex items-center gap-1" aria-label="Primary">
+        <a class="nav-link is-active" href="/">Create</a>
+        <a class="nav-link" href="https://blindpass.atas.tech/">BlindPass</a>
+        <a class="nav-link" href="https://atas.tech">ATAS Tech</a>
     </nav>
-    <div class="flex items-center">
-        <!-- Padlock / Menu Toggle -->
-        <button id="mobile-menu-toggle" class="p-2 text-blue-600 dark:text-blue-400 active:scale-95 duration-200 flex items-center justify-center rounded-full hover:bg-white/40 transition-colors">
-            <span class="material-symbols-outlined text-[24px]" id="menu-icon">lock</span>
+
+    <div class="flex items-center gap-2">
+        <div class="theme-switch" role="group" aria-label="Colour theme">
+            <button type="button" data-set-theme="light" aria-pressed="false" aria-label="Light theme" title="Light">
+                <span class="material-symbols-outlined" aria-hidden="true">light_mode</span>
+            </button>
+            <button type="button" data-set-theme="dark" aria-pressed="false" aria-label="Dark theme" title="Dark">
+                <span class="material-symbols-outlined" aria-hidden="true">dark_mode</span>
+            </button>
+            <button type="button" data-set-theme="hacker" aria-pressed="false" aria-label="Hacker theme" title="Hacker">
+                <span class="material-symbols-outlined" aria-hidden="true">terminal</span>
+            </button>
+        </div>
+        <button id="mobile-menu-toggle" type="button" class="icon-btn md:hidden" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-dropdown">
+            <span class="material-symbols-outlined text-[24px]" id="menu-icon" aria-hidden="true">menu</span>
         </button>
     </div>
-    
-    <!-- Mobile Dropdown Menu -->
-    <div id="mobile-dropdown" class="absolute top-[calc(100%+12px)] left-0 right-0 p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl border border-white/60 dark:border-slate-700/30 shadow-[0_20px_40px_rgba(30,41,59,0.1)] opacity-0 invisible scale-95 origin-top transition-all duration-300 flex flex-col gap-2 md:hidden">
-        <a class="flex items-center gap-4 p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-bold" href="#">
-            <span class="material-symbols-outlined">add_circle</span>
-            <span>Create New Secret</span>
+
+    <!-- Mobile dropdown -->
+    <div id="mobile-dropdown" class="absolute top-[calc(100%+10px)] left-0 right-0 p-3 glass rounded-[var(--radius-card)] shadow-[var(--shadow-card)] opacity-0 invisible scale-95 origin-top transition-all duration-200 flex flex-col gap-1 md:hidden" style="background: var(--surface-strong);">
+        <a class="menu-item is-active" href="/">
+            <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
+            <span>Create a secret</span>
         </a>
-        <div class="h-px bg-slate-200/50 dark:bg-slate-700/50 my-1 mx-2"></div>
-        <a class="flex items-center gap-4 p-4 rounded-2xl text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors" href="https://blindpass.atas.tech/">
-            <span class="material-symbols-outlined">password</span>
+        <div class="h-px my-1 mx-3" style="background: var(--line-strong);"></div>
+        <a class="menu-item" href="https://blindpass.atas.tech/">
+            <span class="material-symbols-outlined" aria-hidden="true">password</span>
             <span>BlindPass</span>
         </a>
-        <a class="flex items-center gap-4 p-4 rounded-2xl text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors" href="https://atas.tech">
-            <span class="material-symbols-outlined">language</span>
+        <a class="menu-item" href="https://atas.tech">
+            <span class="material-symbols-outlined" aria-hidden="true">language</span>
             <span>ATAS Tech</span>
+        </a>
+        <a class="menu-item" href="/privacy.html">
+            <span class="material-symbols-outlined" aria-hidden="true">security</span>
+            <span>Privacy</span>
         </a>
     </div>
 </header>
-<main class="relative min-h-screen pt-32 pb-20 px-6 flex flex-col items-center justify-center">
-<!-- Background Decorative Element -->
-<div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 blur-[120px] rounded-full -z-10"></div>
-<div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-secondary-container/30 blur-[100px] rounded-full -z-10"></div>
-<!-- Main Card Center -->
-<div class="glass-panel w-full max-w-2xl p-8 md:p-12 rounded-xl shadow-[0_20px_60px_rgba(30,41,59,0.08)]">
-<div class="flex flex-col items-center text-center mb-10">
-<div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary mb-4">
-<span class="material-symbols-outlined text-3xl" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
-</div>
-<h1 class="font-headline text-4xl md:text-5xl font-extrabold tracking-tight text-on-surface mb-2">BlindDrop</h1>
-<p class="text-on-surface-variant font-medium text-lg">Share secrets that self-destruct</p>
-</div>
-<div class="space-y-8">
-            <!-- Secret Input -->
-            <div class="group" id="input-container">
-                <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 ml-1">The Secret</label>
-                <textarea id="secret-input" spellcheck="false" autocomplete="off" class="w-full min-h-[160px] bg-surface-container-lowest border-none rounded-sm p-6 text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all shadow-inner text-lg leading-relaxed" placeholder="Enter your secret... (password / API key)"></textarea>
-                
-                <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-6 mb-3 ml-1">Optional Passphrase (Second Factor)</label>
-                <input type="password" id="passphrase-input" spellcheck="false" autocomplete="off" class="w-full bg-surface-container-lowest border-none rounded-sm px-6 py-4 text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all shadow-inner text-lg" placeholder="Use a long, unique passphrase..." />
-                <p class="mt-2 ml-1 text-sm text-on-surface-variant">The recipient needs both the link and this passphrase. Use a long, unique passphrase and share it separately.</p>
-            </div>
 
-            <!-- TTL Selection -->
-            <div id="ttl-container">
-                <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-4 ml-1">Expires after:</label>
-                <div class="flex flex-wrap gap-3" id="ttl-buttons">
-                    <button data-ttl="300" class="px-5 py-2.5 rounded-full text-sm font-semibold bg-white/60 text-on-surface-variant border border-outline-variant/20 hover:bg-white transition-all">5m</button>
-                    <button data-ttl="3600" class="px-5 py-2.5 rounded-full text-sm font-semibold bg-primary text-on-primary shadow-lg shadow-primary/20 transition-all">1h</button>
-                    <button data-ttl="86400" class="px-5 py-2.5 rounded-full text-sm font-semibold bg-white/60 text-on-surface-variant border border-outline-variant/20 hover:bg-white transition-all">24h</button>
-                    <button data-ttl="604800" class="px-5 py-2.5 rounded-full text-sm font-semibold bg-white/60 text-on-surface-variant border border-outline-variant/20 hover:bg-white transition-all">7d</button>
+<main class="relative min-h-dvh pt-28 md:pt-36 pb-16 px-4 md:px-6 flex flex-col items-center justify-center">
+
+    <!-- Main card -->
+    <section class="card w-full max-w-2xl p-6 sm:p-8 md:p-12" aria-labelledby="hero-title">
+        <div class="flex flex-col items-center text-center mb-8 md:mb-10">
+            <div class="hero-icon mb-5">
+                <span id="hero-icon" class="material-symbols-outlined is-filled text-[28px]" aria-hidden="true">lock</span>
+            </div>
+            <h1 id="hero-title" class="hero-title text-[2rem] sm:text-4xl md:text-[2.75rem] mb-3">Share secrets that <span class="whitespace-nowrap">self-destruct</span></h1>
+            <p id="hero-subtitle" class="hint text-base md:text-lg max-w-md">Encrypted in your browser before it leaves. One link, one view, then it is gone for good.</p>
+        </div>
+
+        <div class="space-y-7">
+            <!-- Secret input -->
+            <div id="input-container" class="space-y-6">
+                <div>
+                    <div class="flex items-baseline justify-between mb-2.5 px-1">
+                        <label for="secret-input" class="label">The secret</label>
+                        <span class="text-xs font-medium text-fg-faint">Up to 100 KiB</span>
+                    </div>
+                    <textarea id="secret-input" spellcheck="false" autocomplete="off" autocapitalize="off" class="field field-mono" placeholder="Paste a password, API key, or anything sensitive…"></textarea>
+                </div>
+
+                <div>
+                    <div class="flex items-center gap-2 mb-2.5 px-1">
+                        <label for="passphrase-input" class="label">Passphrase</label>
+                        <span class="tag">Optional</span>
+                    </div>
+                    <div class="relative">
+                        <input type="password" id="passphrase-input" spellcheck="false" autocomplete="off" autocapitalize="off" class="field pr-14" placeholder="Long, unique passphrase" />
+                        <button type="button" id="passphrase-toggle" class="icon-btn absolute right-2 top-1/2 -translate-y-1/2" aria-label="Show passphrase" aria-pressed="false">
+                            <span class="material-symbols-outlined text-[22px]" aria-hidden="true">visibility</span>
+                        </button>
+                    </div>
+                    <p class="hint mt-2 px-1">The recipient needs both the link and this passphrase. Share the passphrase through a different channel.</p>
                 </div>
             </div>
 
-            <!-- Turnstile Widget -->
-            <div id="turnstile-container" class="mt-4"></div>
+            <!-- Expiry -->
+            <div id="ttl-container">
+                <label class="label mb-3 px-1" id="ttl-label">Expires after</label>
+                <div class="grid grid-cols-4 gap-2 sm:gap-3" id="ttl-buttons" role="group" aria-labelledby="ttl-label">
+                    <button type="button" data-ttl="300" class="chip" aria-pressed="false">5 min</button>
+                    <button type="button" data-ttl="3600" class="chip" aria-pressed="true">1 hour</button>
+                    <button type="button" data-ttl="86400" class="chip" aria-pressed="false">24 hours</button>
+                    <button type="button" data-ttl="604800" class="chip" aria-pressed="false">7 days</button>
+                </div>
+            </div>
 
-            <!-- Action Button -->
-            <button id="action-btn" class="w-full py-5 rounded-lg bg-gradient-to-r from-primary to-primary-container text-white font-headline text-lg font-bold shadow-xl shadow-primary/25 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3">
-                <span id="action-text">Create Secret link</span>
-                <span class="material-symbols-outlined" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span>
+            <!-- Turnstile -->
+            <div id="turnstile-container" class="empty:hidden"></div>
+
+            <!-- Inline validation error (populated by main.ts) -->
+            <div id="create-error" class="inline-error" role="alert" hidden></div>
+
+            <!-- Primary action -->
+            <button id="action-btn" type="button" class="btn-primary">
+                <span id="action-text">Create secret link</span>
+                <span id="action-icon" class="material-symbols-outlined is-filled" aria-hidden="true">bolt</span>
             </button>
         </div>
-</div>
-<!-- Bottom Helper Row -->
-<div class="mt-12 flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 w-full max-w-4xl px-4">
-<div class="flex items-center gap-3 group">
-<div class="flex-shrink-0 w-8 h-8 rounded-full bg-white/40 flex items-center justify-center border border-white/60 shadow-sm text-primary font-bold text-sm">1</div>
-<p class="text-on-surface-variant text-sm font-medium tracking-tight">Encrypted in your browser</p>
-</div>
-<div class="flex items-center gap-3 group">
-<div class="flex-shrink-0 w-8 h-8 rounded-full bg-white/40 flex items-center justify-center border border-white/60 shadow-sm text-primary font-bold text-sm">2</div>
-<p class="text-on-surface-variant text-sm font-medium tracking-tight">Only ciphertext is stored</p>
-</div>
-<div class="flex items-center gap-3 group">
-<div class="flex-shrink-0 w-8 h-8 rounded-full bg-white/40 flex items-center justify-center border border-white/60 shadow-sm text-primary font-bold text-sm">3</div>
-<p class="text-on-surface-variant text-sm font-medium tracking-tight">Link works exactly once</p>
-</div>
-</div>
+    </section>
+
+    <!-- Trust strip -->
+    <ul class="mt-10 md:mt-12 w-full max-w-4xl px-2 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 text-sm font-medium" aria-label="How it works">
+        <li class="feature sm:justify-center">
+            <span class="feature-icon"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">encrypted</span></span>
+            <span>Encrypted in your browser</span>
+        </li>
+        <li class="feature sm:justify-center">
+            <span class="feature-icon"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">database</span></span>
+            <span>Only ciphertext is stored</span>
+        </li>
+        <li class="feature sm:justify-center">
+            <span class="feature-icon"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">local_fire_department</span></span>
+            <span>Link works exactly once</span>
+        </li>
+    </ul>
 </main>
-<!-- Footer Shell -->
-<footer class="w-full py-12 flex flex-col md:flex-row justify-center items-center gap-8 bg-transparent text-xs font-medium font-['Inter'] uppercase tracking-widest text-slate-400 dark:text-slate-600">
-<div class="text-slate-900 dark:text-slate-50 font-bold opacity-80">BlindDrop: End-to-End Encrypted Secrets</div>
-<div class="flex items-center gap-8">
-<a class="hover:text-blue-600 dark:hover:text-blue-400 transition-opacity opacity-80 hover:opacity-100" href="/privacy.html">Privacy</a>
-</div>
+
+<footer class="w-full py-10 px-6 flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 text-xs font-semibold uppercase tracking-[0.14em] text-fg-faint text-center">
+    <div class="text-fg-muted">BlindDrop · End-to-end encrypted secrets</div>
+    <nav class="flex items-center gap-6" aria-label="Footer">
+        <a class="hover:text-primary-text transition-colors" href="/privacy.html">Privacy</a>
+        <a class="hover:text-primary-text transition-colors" href="https://blindpass.atas.tech/">BlindPass</a>
+        <a class="hover:text-primary-text transition-colors" href="https://atas.tech">ATAS Tech</a>
+    </nav>
 </footer>
-<!-- Imagery Placeholder (Optional Background Texture) -->
-<div class="fixed inset-0 -z-50 overflow-hidden pointer-events-none opacity-20">
-<div class="absolute -top-[20%] -right-[10%] w-[60%] h-[60%]" data-alt="soft ethereal gradient sphere in light blue and soft lavender drifting in a clean white space"></div>
-</div>
-</body></html>
+</body>
+</html>

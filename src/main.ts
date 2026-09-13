@@ -1,3 +1,4 @@
+import './theme.js';
 import { API_BASE_URL } from './config.js';
 import {
   ENVELOPE_VERSION,
@@ -26,6 +27,8 @@ interface RevealEnvelope {
   salt?: string;
 }
 
+type NoticeTone = 'danger' | 'warning' | 'info';
+
 async function readApiError(response: Response, fallback: string): Promise<Error> {
   const data = await response.json().catch(() => ({})) as { error?: unknown };
   return new Error(typeof data.error === 'string' ? data.error : fallback);
@@ -35,15 +38,85 @@ function secretUrl(id: string, suffix: string): string {
   return `${API_URL}/api/secrets/${encodeURIComponent(id)}${suffix}`;
 }
 
+/* ------------------------------------------------------------------ */
+/* Small UI helpers                                                    */
+/* ------------------------------------------------------------------ */
+
+function icon(name: string, extraClass = ''): string {
+  return `<span class="material-symbols-outlined is-filled ${extraClass}" aria-hidden="true">${name}</span>`;
+}
+
+function setHero(iconName: string, title?: string, subtitle?: string): void {
+  const heroIcon = document.getElementById('hero-icon');
+  if (heroIcon) heroIcon.textContent = iconName;
+  if (title !== undefined) {
+    const heading = document.getElementById('hero-title');
+    if (heading) heading.textContent = title;
+  }
+  if (subtitle !== undefined) {
+    const paragraph = document.getElementById('hero-subtitle');
+    if (paragraph) paragraph.textContent = subtitle;
+  }
+}
+
+function setActionBusy(button: HTMLButtonElement, busy: boolean, label?: string): void {
+  const text = document.getElementById('action-text');
+  const iconElement = document.getElementById('action-icon');
+  button.disabled = busy;
+  button.classList.toggle('is-busy', busy);
+  if (label && text) text.textContent = label;
+  if (iconElement) {
+    iconElement.classList.toggle('spin', busy);
+    if (busy) {
+      iconElement.dataset.restore = iconElement.textContent ?? '';
+      iconElement.textContent = 'progress_activity';
+    } else if (iconElement.dataset.restore !== undefined) {
+      iconElement.textContent = iconElement.dataset.restore;
+      delete iconElement.dataset.restore;
+    }
+  }
+}
+
+function setActionIcon(name: string): void {
+  const iconElement = document.getElementById('action-icon');
+  if (iconElement) iconElement.textContent = name;
+}
+
+/** Replaces the action button with a fresh "start over" button. */
+function convertActionToRestart(button: HTMLButtonElement, label: string): void {
+  const text = document.getElementById('action-text');
+  if (text) text.textContent = label;
+  setActionIcon('add');
+  setActionBusy(button, false);
+  button.replaceWith(button.cloneNode(true));
+  document.getElementById('action-btn')?.addEventListener('click', () => {
+    window.location.href = window.location.pathname;
+  });
+}
+
+function showCreateError(message: string): void {
+  const box = document.getElementById('create-error');
+  if (!box) return;
+  box.innerHTML = `${icon('error', 'text-[20px] shrink-0')}<span></span>`;
+  const span = box.querySelector('span:last-child');
+  if (span) span.textContent = message;
+  box.hidden = false;
+}
+
+function clearCreateError(): void {
+  const box = document.getElementById('create-error');
+  if (box) box.hidden = true;
+}
+
 function setInlineError(container: HTMLElement, message: string): void {
   container.querySelector('#reveal-error')?.remove();
   const error = document.createElement('div');
   error.id = 'reveal-error';
-  error.className = 'mt-6 p-4 bg-error/10 rounded-lg border border-error/20 text-center';
-  const paragraph = document.createElement('p');
-  paragraph.className = 'text-error-dim font-medium';
-  paragraph.textContent = message;
-  error.appendChild(paragraph);
+  error.className = 'inline-error mt-4';
+  error.setAttribute('role', 'alert');
+  error.innerHTML = `${icon('error', 'text-[20px] shrink-0')}<span></span>`;
+  const span = error.querySelector('span:last-child');
+  if (span) span.textContent = message;
   container.appendChild(error);
 }
 
@@ -51,59 +124,128 @@ function clearInlineError(container: HTMLElement): void {
   container.querySelector('#reveal-error')?.remove();
 }
 
+interface NoticeStyle {
+  tone: NoticeTone;
+  iconName: string;
+  heading: string;
+  subtitle: string;
+}
+
+function noticeToneFor(message: string): NoticeStyle {
+  const lower = message.toLowerCase();
+  if (lower.includes('already been viewed') || lower.includes('burned')) {
+    return {
+      tone: 'warning',
+      iconName: 'local_fire_department',
+      heading: 'This secret is gone',
+      subtitle: 'One-time links cannot be reopened. Ask the sender for a new one if you still need it.'
+    };
+  }
+  if (lower.includes('not found') || lower.includes('expired')) {
+    return {
+      tone: 'warning',
+      iconName: 'timer_off',
+      heading: 'Link expired or invalid',
+      subtitle: 'The secret was never stored here or its time-to-live has passed. Nothing remains on the server.'
+    };
+  }
+  if (lower.includes('missing')) {
+    return {
+      tone: 'danger',
+      iconName: 'link_off',
+      heading: 'Incomplete link',
+      subtitle: 'The decryption key travels after the # in the link. Copy the full link exactly as it was shared.'
+    };
+  }
+  return {
+    tone: 'danger',
+    iconName: 'error',
+    heading: 'Something went wrong',
+    subtitle: 'Do not refresh or retry automatically; the server state may be unknown.'
+  };
+}
+
 function renderNotice(container: HTMLElement, message: string): void {
+  const { tone, iconName, heading, subtitle } = noticeToneFor(message);
   container.innerHTML = `
-    <div class="flex flex-col items-center justify-center p-8 bg-error/10 rounded-lg border border-error/20 text-center">
-      <span class="material-symbols-outlined text-5xl text-error mb-4" style="font-variation-settings: 'FILL' 1;">error</span>
-      <h3 class="text-error font-bold text-xl mb-2">Notice</h3>
-      <p id="notice-message" class="text-error-dim font-medium max-w-sm"></p>
+    <div class="notice notice-${tone}">
+      ${icon(iconName, 'text-5xl mb-4')}
+      <h3 class="font-display font-bold text-xl mb-2 tracking-tight"></h3>
+      <p id="notice-message" class="font-medium max-w-sm text-fg-muted"></p>
     </div>
   `;
+  const headingElement = container.querySelector('h3');
+  if (headingElement) headingElement.textContent = heading;
   const messageElement = container.querySelector('#notice-message');
   if (messageElement) messageElement.textContent = message;
+  setHero(iconName, heading, subtitle);
+}
+
+function wireCopyButton(button: HTMLElement | null, getValue: () => string): void {
+  button?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(getValue());
+      button.innerHTML = `${icon('check', 'text-[18px]')} Copied`;
+      button.classList.add('is-done');
+      window.setTimeout(() => {
+        button.innerHTML = `${icon('content_copy', 'text-[18px]')} Copy`;
+        button.classList.remove('is-done');
+      }, 2200);
+    } catch {
+      button.innerHTML = `${icon('error', 'text-[18px]')} Copy failed`;
+    }
+  });
 }
 
 function renderShareLink(container: HTMLElement, shareUrl: string): void {
   container.innerHTML = `
-    <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 ml-1">Your Shareable Link</label>
-    <div class="relative w-full">
-      <textarea readonly id="share-link" spellcheck="false" autocomplete="off" class="w-full min-h-[120px] bg-surface-container-lowest border border-primary/20 rounded-lg p-6 text-primary focus:ring-4 focus:ring-primary/10 transition-all shadow-sm text-lg leading-relaxed break-all resize-none"></textarea>
-      <button id="copy-btn" class="absolute bottom-4 right-4 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors">
-        <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">content_copy</span> Copy
-      </button>
+    <div>
+      <div class="flex items-center justify-between mb-2.5 px-1">
+        <label for="share-link" class="label">Your one-time link</label>
+        <span class="tag">Ready</span>
+      </div>
+      <div class="relative w-full">
+        <textarea readonly id="share-link" spellcheck="false" autocomplete="off" class="field field-mono field-primary pb-16 break-all"></textarea>
+        <button id="copy-btn" type="button" class="btn-soft absolute bottom-3 right-3">${icon('content_copy', 'text-[18px]')} Copy</button>
+      </div>
+      <div class="notice notice-warning !flex-row !items-start !text-left gap-3 !p-4 mt-4 text-sm">
+        ${icon('warning', 'text-[20px] shrink-0')}
+        <p class="font-medium text-fg-muted">Anyone with this link can read the secret, and it works exactly once. Send it through a channel you trust; the key after <span class="font-mono">#</span> never reaches our server.</p>
+      </div>
     </div>
   `;
 
   const shareLink = container.querySelector('#share-link') as HTMLTextAreaElement | null;
-  if (shareLink) shareLink.value = shareUrl;
-
-  container.querySelector('#copy-btn')?.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(shareUrl);
-    const copyButton = container.querySelector('#copy-btn');
-    if (copyButton) copyButton.innerHTML = `<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span> Copied`;
-  });
+  if (shareLink) {
+    shareLink.value = shareUrl;
+    shareLink.addEventListener('focus', () => shareLink.select());
+  }
+  wireCopyButton(container.querySelector('#copy-btn'), () => shareUrl);
 }
 
 function renderDecryptedSecret(container: HTMLElement, plaintext: string): void {
   container.innerHTML = `
-    <label id="decrypted-label" class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 ml-1">Decrypted Secret (server deletion confirmed)</label>
-    <div class="relative w-full">
-      <textarea readonly id="decrypted-secret" spellcheck="false" autocomplete="off" class="w-full min-h-[160px] bg-surface-container-lowest border border-success/20 rounded-lg p-6 text-on-surface focus:ring-4 focus:ring-primary/10 transition-all shadow-sm text-lg leading-relaxed resize-none"></textarea>
-      <button id="copy-secret-btn" class="absolute bottom-4 right-4 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors">
-        <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">content_copy</span> Copy
-      </button>
+    <div>
+      <div class="flex items-center justify-between mb-2.5 px-1">
+        <label id="decrypted-label" for="decrypted-secret" class="label">Decrypted secret</label>
+        <span class="tag text-success border-success/30">${icon('check', 'text-[13px] mr-1')} Server copy deleted</span>
+      </div>
+      <div class="relative w-full">
+        <textarea readonly id="decrypted-secret" spellcheck="false" autocomplete="off" class="field field-mono field-success pb-16"></textarea>
+        <button id="copy-secret-btn" type="button" class="btn-soft absolute bottom-3 right-3">${icon('content_copy', 'text-[18px]')} Copy</button>
+      </div>
+      <p class="hint mt-3 px-1">This is the only copy. Store it somewhere safe now; reloading this page will not bring it back.</p>
     </div>
   `;
 
   const decryptedSecret = container.querySelector('#decrypted-secret') as HTMLTextAreaElement | null;
   if (decryptedSecret) decryptedSecret.value = plaintext;
-
-  container.querySelector('#copy-secret-btn')?.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(plaintext);
-    const copyButton = container.querySelector('#copy-secret-btn');
-    if (copyButton) copyButton.innerHTML = `<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span> Copied`;
-  });
+  wireCopyButton(container.querySelector('#copy-secret-btn'), () => plaintext);
 }
+
+/* ------------------------------------------------------------------ */
+/* Create screen                                                       */
+/* ------------------------------------------------------------------ */
 
 function initCreateScreen(): void {
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -124,6 +266,7 @@ function initCreateScreen(): void {
           action: import.meta.env.VITE_TURNSTILE_ACTION || undefined,
           callback: (token: string) => {
             currentTurnstileToken = token;
+            clearCreateError();
           }
         });
       };
@@ -135,50 +278,60 @@ function initCreateScreen(): void {
     }
   }
 
-  let selectedTtl = 3600;
-  const ttlButtons = document.querySelectorAll('#ttl-buttons button');
-  const activeClasses = 'px-5 py-2.5 rounded-full text-sm font-semibold bg-primary text-on-primary shadow-lg shadow-primary/20 transition-all';
-  const inactiveClasses = 'px-5 py-2.5 rounded-full text-sm font-semibold bg-white/60 text-on-surface-variant border border-outline-variant/20 hover:bg-white transition-all';
+  // Passphrase visibility toggle
+  const passphraseInput = document.getElementById('passphrase-input') as HTMLInputElement | null;
+  const passphraseToggle = document.getElementById('passphrase-toggle') as HTMLButtonElement | null;
+  passphraseToggle?.addEventListener('click', () => {
+    if (!passphraseInput) return;
+    const reveal = passphraseInput.type === 'password';
+    passphraseInput.type = reveal ? 'text' : 'password';
+    passphraseToggle.setAttribute('aria-pressed', reveal ? 'true' : 'false');
+    passphraseToggle.setAttribute('aria-label', reveal ? 'Hide passphrase' : 'Show passphrase');
+    const toggleIcon = passphraseToggle.querySelector('.material-symbols-outlined');
+    if (toggleIcon) toggleIcon.textContent = reveal ? 'visibility_off' : 'visibility';
+  });
 
+  // Expiry selection
+  let selectedTtl = 3600;
+  const ttlButtons = document.querySelectorAll<HTMLButtonElement>('#ttl-buttons button');
   ttlButtons.forEach(button => {
-    const isSelected = Number((button as HTMLElement).dataset.ttl) === selectedTtl;
-    button.className = isSelected ? activeClasses : inactiveClasses;
+    button.setAttribute('aria-pressed', Number(button.dataset.ttl) === selectedTtl ? 'true' : 'false');
     button.addEventListener('click', event => {
-      const target = event.currentTarget as HTMLElement;
+      const target = event.currentTarget as HTMLButtonElement;
       selectedTtl = Number(target.dataset.ttl);
-      ttlButtons.forEach(item => { item.className = inactiveClasses; });
-      target.className = activeClasses;
+      ttlButtons.forEach(item => item.setAttribute('aria-pressed', 'false'));
+      target.setAttribute('aria-pressed', 'true');
     });
   });
+
+  document.getElementById('secret-input')?.addEventListener('input', clearCreateError);
 
   const actionBtn = document.getElementById('action-btn') as HTMLButtonElement | null;
   actionBtn?.addEventListener('click', async () => {
     const secretInput = document.getElementById('secret-input') as HTMLTextAreaElement | null;
     const text = secretInput?.value ?? '';
     if (!text || /^\s*$/.test(text)) {
-      alert('Please enter a secret.');
+      showCreateError('Enter a secret to share.');
+      secretInput?.focus();
       return;
     }
 
     try {
       assertPlaintextSize(text);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Secret is too large.');
+      showCreateError(error instanceof Error ? error.message : 'Secret is too large.');
       return;
     }
 
     if (!currentTurnstileToken) {
-      alert(siteKeyMissingMessage());
+      showCreateError(siteKeyMissingMessage());
       return;
     }
 
-    const actionText = document.getElementById('action-text');
-    if (actionText) actionText.textContent = 'Encrypting...';
-    actionBtn.disabled = true;
-    actionBtn.classList.add('opacity-50', 'pointer-events-none');
+    clearCreateError();
+    setActionBusy(actionBtn, true, 'Encrypting…');
 
     try {
-      const passphraseInput = document.getElementById('passphrase-input') as HTMLInputElement | null;
       const passphrase = passphraseInput?.value ?? '';
       const encrypted = await encryptSecret(text, passphrase || undefined);
 
@@ -211,20 +364,13 @@ function initCreateScreen(): void {
       if (turnstileContainer) turnstileContainer.style.display = 'none';
       if (inputContainer) renderShareLink(inputContainer, url.toString());
 
-      if (actionText) actionText.textContent = 'Create Another Secret';
-      const icon = actionBtn.querySelector('.material-symbols-outlined');
-      if (icon) icon.textContent = 'add';
-      actionBtn.disabled = false;
-      actionBtn.classList.remove('opacity-50', 'pointer-events-none');
-      actionBtn.replaceWith(actionBtn.cloneNode(true));
-      document.getElementById('action-btn')?.addEventListener('click', () => {
-        window.location.href = window.location.pathname;
-      });
+      setHero('check', 'Your link is ready', passphrase
+        ? 'Share the link and the passphrase through two different channels.'
+        : 'Send it to one person. It opens once, then the secret is destroyed.');
+      convertActionToRestart(actionBtn, 'Create another secret');
     } catch (error) {
-      alert(`Error: ${error instanceof Error ? error.message : 'Unable to create secret.'}`);
-      if (actionText) actionText.textContent = 'Create Secret link';
-      actionBtn.disabled = false;
-      actionBtn.classList.remove('opacity-50', 'pointer-events-none');
+      showCreateError(error instanceof Error ? error.message : 'Unable to create secret.');
+      setActionBusy(actionBtn, false, 'Create secret link');
     }
   });
 
@@ -237,6 +383,10 @@ function initCreateScreen(): void {
   void turnstileWidgetId;
 }
 
+/* ------------------------------------------------------------------ */
+/* Reveal screen                                                       */
+/* ------------------------------------------------------------------ */
+
 async function initRevealScreen(hashParams: URLSearchParams): Promise<void> {
   const id = hashParams.get('id');
   const key = hashParams.get('key');
@@ -245,18 +395,18 @@ async function initRevealScreen(hashParams: URLSearchParams): Promise<void> {
   const inputContainer = document.getElementById('input-container');
   const ttlContainer = document.getElementById('ttl-container');
   const turnstileContainer = document.getElementById('turnstile-container');
+  const createError = document.getElementById('create-error');
   const actionBtn = document.getElementById('action-btn') as HTMLButtonElement | null;
   const actionText = document.getElementById('action-text');
   if (!inputContainer || !actionBtn) return;
 
   if (ttlContainer) ttlContainer.style.display = 'none';
   if (turnstileContainer) turnstileContainer.style.display = 'none';
+  if (createError) createError.remove();
   document.title = 'Reveal Secret — BlindDrop';
 
-  const title = document.querySelector('h1');
-  if (title) title.textContent = 'Unlock Secret';
-  const subtitle = document.querySelector('p');
-  if (subtitle) subtitle.textContent = 'This secret will be permanently destroyed once delivered. Refreshing requires reopening the original link.';
+  setHero('lock', 'Unlock secret', 'This secret will be permanently destroyed once delivered. Refreshing requires reopening the original link.');
+  document.querySelectorAll('.nav-link, .menu-item').forEach(link => link.classList.remove('is-active'));
 
   let meta: RevealMeta;
   try {
@@ -270,24 +420,27 @@ async function initRevealScreen(hashParams: URLSearchParams): Promise<void> {
   }
 
   inputContainer.innerHTML = `
-    <div class="flex flex-col items-center justify-center p-8 bg-surface-container-lowest rounded-lg border border-primary/10 shadow-sm text-center">
-      <span class="material-symbols-outlined text-5xl text-primary mb-4" style="font-variation-settings: 'FILL' 1;">lock</span>
-      <p class="text-on-surface font-semibold text-lg max-w-sm">You have received an encrypted secret. Ready to unlock?</p>
+    <div class="notice notice-info">
+      ${icon('encrypted', 'text-5xl mb-4')}
+      <p class="text-fg font-semibold text-lg max-w-sm">You have received an encrypted secret. Ready to unlock?</p>
+      <p class="hint mt-2 max-w-sm">Nothing is fetched until you press the button below. This step is irreversible.</p>
     </div>
   `;
   if (meta.requires_passphrase) {
     const passphraseWrapper = document.createElement('div');
-    passphraseWrapper.className = 'mt-8 w-full';
+    passphraseWrapper.className = 'mt-6 w-full text-left';
     passphraseWrapper.innerHTML = `
-      <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1 text-left">Passphrase Required</label>
-      <input type="password" id="reveal-passphrase" spellcheck="false" autocomplete="off" class="w-full bg-surface-container-lowest border-none rounded-sm px-6 py-4 text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all shadow-inner font-medium" placeholder="Enter passphrase to unlock" />
+      <div class="flex items-center gap-2 mb-2.5 px-1">
+        <label for="reveal-passphrase" class="label">Passphrase</label>
+        <span class="tag">Required</span>
+      </div>
+      <input type="password" id="reveal-passphrase" spellcheck="false" autocomplete="off" autocapitalize="off" class="field" placeholder="Enter the passphrase the sender gave you" />
     `;
     inputContainer.appendChild(passphraseWrapper);
   }
 
   if (actionText) actionText.textContent = 'Reveal & Destroy Secret';
-  const icon = actionBtn.querySelector('.material-symbols-outlined');
-  if (icon) icon.textContent = 'lock_open';
+  setActionIcon('lock_open');
 
   let envelope: RevealEnvelope | null = null;
   let deletionConfirmed = false;
@@ -300,6 +453,7 @@ async function initRevealScreen(hashParams: URLSearchParams): Promise<void> {
     const passphrase = passphraseInput?.value ?? '';
     if (meta.requires_passphrase && !passphrase) {
       setInlineError(inputContainer, 'A passphrase is required.');
+      passphraseInput?.focus();
       return;
     }
     if (!key) {
@@ -309,9 +463,7 @@ async function initRevealScreen(hashParams: URLSearchParams): Promise<void> {
     }
 
     clearInlineError(inputContainer);
-    if (actionText) actionText.textContent = 'Decrypting...';
-    actionBtn.disabled = true;
-    actionBtn.classList.add('opacity-50', 'pointer-events-none');
+    setActionBusy(actionBtn, true, 'Decrypting…');
 
     try {
       if (!envelope) {
@@ -349,9 +501,7 @@ async function initRevealScreen(hashParams: URLSearchParams): Promise<void> {
       if (plaintext === null) {
         if (deletionConfirmed && meta.requires_passphrase) {
           setInlineError(inputContainer, 'Incorrect passphrase or corrupt payload. The server deleted the secret; try again in this tab without refreshing.');
-          if (actionText) actionText.textContent = 'Try Again';
-          actionBtn.disabled = false;
-          actionBtn.classList.remove('opacity-50', 'pointer-events-none');
+          setActionBusy(actionBtn, false, 'Try Again');
           return;
         }
         throw new Error('The encrypted secret was delivered and deleted, but this link could not decrypt it.');
@@ -359,14 +509,8 @@ async function initRevealScreen(hashParams: URLSearchParams): Promise<void> {
 
       renderDecryptedSecret(inputContainer, plaintext);
       finished = true;
-      if (actionText) actionText.textContent = 'Create Your Own Secret';
-      if (icon) icon.textContent = 'add';
-      actionBtn.disabled = false;
-      actionBtn.classList.remove('opacity-50', 'pointer-events-none');
-      actionBtn.replaceWith(actionBtn.cloneNode(true));
-      document.getElementById('action-btn')?.addEventListener('click', () => {
-        window.location.href = window.location.pathname;
-      });
+      setHero('lock_open', 'Secret revealed', 'The server copy has been destroyed. This page holds the only remaining copy.');
+      convertActionToRestart(actionBtn, 'Create your own secret');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to reveal secret.';
       renderNotice(inputContainer, message);
@@ -376,6 +520,10 @@ async function initRevealScreen(hashParams: URLSearchParams): Promise<void> {
     }
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* Boot                                                                */
+/* ------------------------------------------------------------------ */
 
 const hashParams = new URLSearchParams(window.location.hash.slice(1));
 if (hashParams.has('id')) {
@@ -395,32 +543,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (!menuToggle || !mobileDropdown || !menuIcon) return;
 
+  const setOpen = (open: boolean) => {
+    mobileDropdown.classList.toggle('opacity-0', !open);
+    mobileDropdown.classList.toggle('invisible', !open);
+    mobileDropdown.classList.toggle('scale-95', !open);
+    mobileDropdown.classList.toggle('opacity-100', open);
+    mobileDropdown.classList.toggle('visible', open);
+    mobileDropdown.classList.toggle('scale-100', open);
+    menuIcon.textContent = open ? 'close' : 'menu';
+    menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    menuToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  };
+
   menuToggle.addEventListener('click', event => {
-    const isOpen = !mobileDropdown.classList.contains('opacity-0');
-    if (isOpen) {
-      mobileDropdown.classList.add('opacity-0', 'invisible', 'scale-95');
-      mobileDropdown.classList.remove('opacity-100', 'visible', 'scale-100');
-      menuIcon.textContent = 'lock';
-    } else {
-      mobileDropdown.classList.remove('opacity-0', 'invisible', 'scale-95');
-      mobileDropdown.classList.add('opacity-100', 'visible', 'scale-100');
-      menuIcon.textContent = 'close';
-    }
+    setOpen(mobileDropdown.classList.contains('opacity-0'));
     event.stopPropagation();
   });
 
   document.addEventListener('click', event => {
     if (!mobileDropdown.contains(event.target as Node) && !menuToggle.contains(event.target as Node)) {
-      mobileDropdown.classList.add('opacity-0', 'invisible', 'scale-95');
-      mobileDropdown.classList.remove('opacity-100', 'visible', 'scale-100');
-      menuIcon.textContent = 'lock';
+      setOpen(false);
     }
   });
 
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') setOpen(false);
+  });
+
   window.addEventListener('resize', () => {
-    if (window.innerWidth < 768) return;
-    mobileDropdown.classList.add('opacity-0', 'invisible', 'scale-95');
-    mobileDropdown.classList.remove('opacity-100', 'visible', 'scale-100');
-    menuIcon.textContent = 'lock';
+    if (window.innerWidth >= 768) setOpen(false);
   });
 });
